@@ -2,11 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type CurrencyQuotation struct {
@@ -33,13 +38,22 @@ func main() {
 }
 
 func handlerGetQuotation(w http.ResponseWriter, r *http.Request) {
-	quotation, err := getQuotation(w, r)
+	// quotation, err := getQuotation(w, r)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// fmt.Println(quotation)
+	createDatase()
+	database, err := sql.Open("sqlite3", "databsase.db")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Println(quotation)
+	defer database.Close()
+	createTable(database)
+	// connectDatabase()
 }
 
 func getQuotation(w http.ResponseWriter, r *http.Request) (*CurrencyQuotation, error) {
@@ -70,4 +84,64 @@ func getQuotation(w http.ResponseWriter, r *http.Request) (*CurrencyQuotation, e
 	}
 
 	return &quotation, nil
+}
+
+func createDatase() {
+	f, err := os.Create("cotacao.db")
+	if err != nil {
+		panic(err)
+	}
+	f.Close()
+}
+
+func createTable(db *sql.DB) {
+	quotation_table := `CREATE TABLE IF NOT EXISTS quotation (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "code" TEXT,
+        "codein" TEXT,
+        "name" TEXT,
+		"high" TEXT,
+		"low" TEXT,
+		"varBid" TEXT,
+		"pctChange" TEXT,
+		"bid" TEXT,
+		"ask" TEXT,
+		"timestamp" TEXT,
+		"create_date" TEXT);`
+	query, err := db.Prepare(quotation_table)
+	if err != nil {
+		log.Fatal(err)
+	}
+	query.Exec()
+	fmt.Println("Table created successfully!")
+}
+
+func connectDatabase() {
+
+	//create table if not exist
+
+	db, err := sql.Open("sqlite3", "./cotacao.db")
+	if err != nil {
+		panic(err)
+	}
+
+	rows, err := db.Query("SELECT * FROM primeiro_teste;")
+	if err != nil {
+		panic(err)
+	}
+
+	var teste_id int
+	var teste_name string
+
+	for rows.Next() {
+		err = rows.Scan(&teste_id, &teste_name)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(teste_id)
+		fmt.Println(teste_name)
+	}
+	rows.Close()
+
 }
