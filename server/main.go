@@ -37,7 +37,7 @@ type QuotationResponse struct {
 
 func main() {
 	http.HandleFunc("/all", handlerGetAllQuotation)
-	http.HandleFunc("/", handlerGetQuotation)
+	http.HandleFunc("/cotacao", handlerGetQuotation)
 	http.ListenAndServe(":8080", nil)
 }
 
