@@ -189,7 +189,10 @@ func insertQuotation(db *sql.DB, quotation *CurrencyQuotation) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(quotation.Coin.Code, quotation.Coin.Codein, quotation.Coin.Name, quotation.Coin.High, quotation.Coin.Low, quotation.Coin.VarBid, quotation.Coin.PctChange, quotation.Coin.Bid, quotation.Coin.Ask, quotation.Coin.Timestamp, quotation.Coin.CreateDate)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err = stmt.ExecContext(ctx, quotation.Coin.Code, quotation.Coin.Codein, quotation.Coin.Name, quotation.Coin.High, quotation.Coin.Low, quotation.Coin.VarBid, quotation.Coin.PctChange, quotation.Coin.Bid, quotation.Coin.Ask, quotation.Coin.Timestamp, quotation.Coin.CreateDate)
 	if err != nil {
 		return err
 	}
