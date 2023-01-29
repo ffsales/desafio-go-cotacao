@@ -31,6 +31,10 @@ type Usdbrl struct {
 	CreateDate string `json:"create_date"`
 }
 
+type QuotationResponse struct {
+	Bid string `json:"bid"`
+}
+
 func main() {
 	http.HandleFunc("/all", handlerGetAllQuotation)
 	http.HandleFunc("/", handlerGetQuotation)
@@ -63,7 +67,7 @@ func handlerGetAllQuotation(w http.ResponseWriter, r *http.Request) {
 
 func selectAllQuotation(db *sql.DB) ([]CurrencyQuotation, error) {
 
-	rows, err := db.Query("select code, codein, name from quotation")
+	rows, err := db.Query("select code, codein, name, high, low, varBid, pctChange, bid, ask, timestamp, create_date from quotation")
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +76,7 @@ func selectAllQuotation(db *sql.DB) ([]CurrencyQuotation, error) {
 	var quotations []CurrencyQuotation
 	for rows.Next() {
 		var coin Usdbrl
-		err = rows.Scan(&coin.Code, &coin.Codein, &coin.Name)
+		err = rows.Scan(&coin.Code, &coin.Codein, &coin.Name, &coin.High, &coin.Low, &coin.VarBid, &coin.PctChange, &coin.Bid, &coin.Ask, &coin.Timestamp, &coin.CreateDate)
 		if err != nil {
 			return nil, err
 		}
@@ -116,6 +120,12 @@ func handlerGetQuotation(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	var response QuotationResponse = QuotationResponse{Bid: quotation.Coin.Bid}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&response)
 }
 
 func getQuotation(w http.ResponseWriter, r *http.Request) (*CurrencyQuotation, error) {
