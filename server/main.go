@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -33,27 +32,90 @@ type Usdbrl struct {
 }
 
 func main() {
+	http.HandleFunc("/all", handlerGetAllQuotation)
 	http.HandleFunc("/", handlerGetQuotation)
 	http.ListenAndServe(":8080", nil)
 }
 
-func handlerGetQuotation(w http.ResponseWriter, r *http.Request) {
-	// quotation, err := getQuotation(w, r)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// fmt.Println(quotation)
-	createDatase()
+func handlerGetAllQuotation(w http.ResponseWriter, r *http.Request) {
 	database, err := sql.Open("sqlite3", "databsase.db")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer database.Close()
-	createTable(database)
-	// connectDatabase()
+
+	quotations, err := selectAllQuotation(database)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var coins []*Usdbrl
+	for _, quotation := range quotations {
+		coins = append(coins, &quotation.Coin)
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(coins)
+}
+
+func selectAllQuotation(db *sql.DB) ([]CurrencyQuotation, error) {
+
+	rows, err := db.Query("select code, codein, name from quotation")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var quotations []CurrencyQuotation
+	for rows.Next() {
+		var coin Usdbrl
+		err = rows.Scan(&coin.Code, &coin.Codein, &coin.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		quotation := CurrencyQuotation{Coin: coin}
+		quotations = append(quotations, quotation)
+	}
+
+	return quotations, nil
+}
+
+func handlerGetQuotation(w http.ResponseWriter, r *http.Request) {
+	quotation, err := getQuotation(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println(quotation)
+	err = createDatase()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	database, err := sql.Open("sqlite3", "databsase.db")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer database.Close()
+
+	err = createTable(database)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = insertQuotation(database, quotation)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func getQuotation(w http.ResponseWriter, r *http.Request) (*CurrencyQuotation, error) {
@@ -86,15 +148,16 @@ func getQuotation(w http.ResponseWriter, r *http.Request) (*CurrencyQuotation, e
 	return &quotation, nil
 }
 
-func createDatase() {
+func createDatase() error {
 	f, err := os.Create("cotacao.db")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	f.Close()
+	return nil
 }
 
-func createTable(db *sql.DB) {
+func createTable(db *sql.DB) error {
 	quotation_table := `CREATE TABLE IF NOT EXISTS quotation (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "code" TEXT,
@@ -110,38 +173,26 @@ func createTable(db *sql.DB) {
 		"create_date" TEXT);`
 	query, err := db.Prepare(quotation_table)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	query.Exec()
 	fmt.Println("Table created successfully!")
+
+	return nil
 }
 
-func connectDatabase() {
+func insertQuotation(db *sql.DB, quotation *CurrencyQuotation) error {
 
-	//create table if not exist
-
-	db, err := sql.Open("sqlite3", "./cotacao.db")
+	stmt, err := db.Prepare("insert into quotation(code, codein, name, high, low, varBid, pctChange, bid, ask, timestamp, create_date) values(?,?,?,?,?,?,?,?,?,?,?)")
 	if err != nil {
-		panic(err)
+		return err
 	}
+	defer stmt.Close()
 
-	rows, err := db.Query("SELECT * FROM primeiro_teste;")
+	_, err = stmt.Exec(quotation.Coin.Code, quotation.Coin.Codein, quotation.Coin.Name, quotation.Coin.High, quotation.Coin.Low, quotation.Coin.VarBid, quotation.Coin.PctChange, quotation.Coin.Bid, quotation.Coin.Ask, quotation.Coin.Timestamp, quotation.Coin.CreateDate)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	var teste_id int
-	var teste_name string
-
-	for rows.Next() {
-		err = rows.Scan(&teste_id, &teste_name)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println(teste_id)
-		fmt.Println(teste_name)
-	}
-	rows.Close()
-
+	return nil
 }
