@@ -42,7 +42,7 @@ func main() {
 }
 
 func handlerGetAllQuotation(w http.ResponseWriter, r *http.Request) {
-	database, err := sql.Open("sqlite3", "databsase.db")
+	database, err := sql.Open("sqlite3", "cotacao.db")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -102,7 +102,7 @@ func handlerGetQuotation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database, err := sql.Open("sqlite3", "databsase.db")
+	database, err := sql.Open("sqlite3", "cotacao.db")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
