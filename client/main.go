@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -16,12 +16,14 @@ type QuotationResponse struct {
 func main() {
 
 	quotation, err := getQuotationServer()
-
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(quotation)
+	err = writeQuotation(*quotation)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getQuotationServer() (*QuotationResponse, error) {
@@ -53,4 +55,19 @@ func getQuotationServer() (*QuotationResponse, error) {
 	}
 
 	return &quotation, nil
+}
+
+func writeQuotation(quotation QuotationResponse) error {
+
+	file, err := os.OpenFile("cotacao.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString("Dólar: {" + quotation.Bid + "}\n"); err != nil {
+		return err
+	}
+
+	return nil
 }
